@@ -61,6 +61,10 @@ Abonent *read_file(char *filename, int *arr_len){
 		char *name = strtok(line,",");
 		char *number = prettify_number(strtok(NULL, ","));
 		int time = atoi(strtok(strtok(NULL, ","), " "));
+		if(name == NULL || number == NULL || time == 0){
+			printf("Invalid line in file. It won't be in output file\n");
+			continue;
+		}
 		Abonent a = new_abonent(name, number, time);
 		num_abonents+=1;
 		if (num_abonents>memal){
@@ -74,7 +78,35 @@ Abonent *read_file(char *filename, int *arr_len){
 	fclose(f);
 	*arr_len = num_abonents;
 	return arr;
-} 
+}
+
+
+void *comparator(const char *field, const char *dest){
+	if (strcmp(field,"name") == 0){
+		if (strcmp(dest,"down")==0){
+			return &abonent_cmp_name_down;
+		}
+		else{
+			return &abonent_cmp_name_up;
+		}
+	}
+	 if (strcmp(field, "number")==0){
+		if (strcmp(dest,"down")==0){
+			return &abonent_cmp_number_down;
+		}
+		else{
+			return &abonent_cmp_number_up;
+		}
+	}
+	if(strcmp(field,"time")==0){
+		if (strcmp(dest,"down")==0){
+			return &abonent_cmp_time_down;
+		}
+		else{
+			return &abonent_cmp_time_up;
+		}
+	}
+}
 
 
 int main(int argc, char **argv){
@@ -86,46 +118,48 @@ int main(int argc, char **argv){
         printf("You must parse name of input file with flag i and name of output file with flag o\n");
         return 1;
     }
-    char *opts = "a:f:d:i:o:"; 
+    char *opts = "a:f:d:"; 
     char *alg = "qsort";
     char *field = "name";
     char *dest = "up";
     char *input_name = NULL;
     char *output_name = NULL; 
     int opt; 
-    while((opt = getopt(argc, argv, opts)) != -1) { 
-        switch(opt) {
-            case 'a':{ 
-                alg = optarg;
-                if(strcmp(alg,"qsort") != 0 && strcmp(alg,"gnome") != 0 && strcmp(alg,"shell") != 0){
-                	printf("The algoritm name canbe only qsort, gnome or shell\n");
-                	return 1;
-                }
-                break;
-            }
-            case 'f':{
-                 field = optarg;
-                 if(strcmp(field,"name") != 0 && strcmp(field,"number") != 0 && strcmp(field,"time") != 0){
-                 	printf("The field can be only name, number or time\n");
-                 	return 1;
-                 }
-                 break;
-             }
-            case 'd':{
-                 dest = optarg;
-                 if(strcmp(dest,"up") != 0 && strcmp(dest,"down") != 0){
-                 	printf("The destination can be only up or down\n");
-                 	return 1;
-                 }
-                 break;
-            }
-            case 'i':{
-            	input_name = optarg;
-            	break;
-            }
-        	case 'o':{
-        		output_name = optarg;
-        	}
+    while((opt = getopt(argc, argv, opts)) != argc) {
+    	if ((opt = getopt(argc, argv, opts)) != -1){
+	        switch(opt) {
+	            case 'a':{ 
+	                alg = optarg;
+	                if(strcmp(alg,"qsort") != 0 && strcmp(alg,"gnome") != 0 && strcmp(alg,"shell") != 0){
+	                	printf("The algoritm name canbe only qsort, gnome or shell\n");
+	                	return 1;
+	                }
+	                break;
+	            }
+	            case 'f':{
+	                 field = optarg;
+	                 if(strcmp(field,"name") != 0 && strcmp(field,"number") != 0 && strcmp(field,"time") != 0){
+	                 	printf("The field can be only name, number or time\n");
+	                 	return 1;
+	                 }
+	                 break;
+	             }
+	            case 'd':{
+	                 dest = optarg;
+	                 if(strcmp(dest,"up") != 0 && strcmp(dest,"down") != 0){
+	                 	printf("The destination can be only up or down\n");
+	                 	return 1;
+	                 }
+	                 break;
+	            }
+	    	}
+	    }
+	    else{
+            input_name = optarg;
+            optind+=1;
+            output_name = optarg;
+            optind+=1;
+            break;
         }
     }
     if (input_name == NULL || output_name == NULL){
@@ -135,37 +169,14 @@ int main(int argc, char **argv){
     int len;
 	Abonent *array = read_file(input_name, &len);
 	if (strcmp(alg,"qsort") == 0){
-		if(strcmp(field,"name") == 0){
-			if(strcmp(dest,"up") == 0){
-				qsort(array, len, sizeof(Abonent), (int (*)(const void *, const void *)) abonent_cmp_name_up);
-			}
-			else{
-				qsort(array, len, sizeof(Abonent), (int (*)(const void *, const void *)) abonent_cmp_name_down);
-			}
-		}
-		else if(strcmp(field,"number") == 0){
-			if(strcmp(dest,"up") == 0){
-				qsort(array, len, sizeof(Abonent), (int (*)(const void *, const void *)) abonent_cmp_number_up);
-			}
-			else{
-				qsort(array, len, sizeof(Abonent), (int (*)(const void *, const void *)) abonent_cmp_number_down);
-			}
-		}
-		else{
-			if(strcmp(dest,"up") == 0){
-				qsort(array, len, sizeof(Abonent), (int (*)(const void *, const void *)) abonent_cmp_time_up);
-			}
-			else{
-				qsort(array, len, sizeof(Abonent), (int (*)(const void *, const void *)) abonent_cmp_time_down);
-			}
-		}
+		qsort(array, len, sizeof(Abonent), (int (*)(const void *, const void *)) comparator(field, dest));
 	}
-	else if (strcmp(alg,"gnome") == 0){
-		gnome_sort(&array, len, field, dest);
-	}
-	else{
-		shell_sort(&array, len, field, dest);
-	}
+	//else if (strcmp(alg,"gnome") == 0){
+	//	gnome_sort(array, len, sizeof(Abonent), (int (*)(const void *, const void *)) comparator(field, dest));
+	//}
+	//else{
+	//	shell_sort(array, len, sizeof(Abonent), (int (*)(const void *, const void *)) comparator(field, dest));
+	//}
     FILE *fd;
     fd = fopen(output_name, "w");
 	for (int i=0; i<len; i++){
